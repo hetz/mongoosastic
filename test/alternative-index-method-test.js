@@ -1,72 +1,102 @@
-var mongoose = require('mongoose'),
-  config = require('./config'),
-  Tweet = require('./models/tweet');
+'use strict'
 
-describe('Index Method', function() {
-  before(function(done) {
-    mongoose.connect(config.mongoUrl, function() {
-      config.deleteIndexIfExists(['tweets', 'public_tweets'], function() {
-        Tweet.remove(function() {
+const mongoose = require('mongoose')
+const config = require('./config')
+const Tweet = require('./models/tweet')
+
+describe('Index Method', function () {
+  before(function (done) {
+    mongoose.connect(config.mongoUrl, config.mongoOpts, function () {
+      config.deleteIndexIfExists(['tweets', 'public_tweets'], function () {
+        Tweet.deleteMany(function () {
           config.createModelAndEnsureIndex(Tweet, {
             user: 'jamescarr',
             message: 'I know kung-fu!',
             post_date: new Date()
-          }, done);
-        });
-      });
-    });
-  });
+          }, done)
+        })
+      })
+    })
+  })
 
-  after(function(done) {
-    Tweet.remove(function() {
-      mongoose.disconnect();
-      done();
-    });
-  });
+  after(function (done) {
+    Tweet.deleteMany(function () {
+      config.deleteIndexIfExists(['tweets', 'public_tweets'], function () {
+        mongoose.disconnect()
+        done()
+      })
+    })
+  })
 
-  it('should be able to index it directly without saving', function(done) {
-    Tweet.findOne({message: 'I know kung-fu!'}, function(err, doc) {
-      doc.message = 'I know nodejitsu!';
-      doc.index(function() {
-        setTimeout(function() {
-          Tweet.search({query_string: {query: 'know'}}, function(err, res) {
-            res.hits.hits[0]._source.message.should.eql('I know nodejitsu!');
-            done();
-          });
-        }, config.indexingTimeout);
-      });
-    });
-  });
+  it('should be able to index it directly without saving', function (done) {
+    Tweet.findOne({
+      message: 'I know kung-fu!'
+    }, function (err, doc) {
+      doc.message = 'I know nodejitsu!'
+      doc.index(function () {
+        setTimeout(function () {
+          Tweet.search({
+            query_string: {
+              query: 'know'
+            }
+          }, function (err1, res) {
+            res.hits.hits[0]._source.message.should.eql('I know nodejitsu!')
+            done()
+          })
+        }, config.INDEXING_TIMEOUT)
+      })
+    })
+  })
 
-  it('should be able to index to alternative index', function(done) {
-    Tweet.findOne({message: 'I know kung-fu!'}, function(err, doc) {
-      doc.message = 'I know taebo!';
-      doc.index({index: 'public_tweets'}, function() {
-        setTimeout(function() {
-          Tweet.search({query_string: {query: 'know'}}, {index: 'public_tweets'}, function(err, res) {
-            res.hits.hits[0]._source.message.should.eql('I know taebo!');
-            done();
-          });
-        }, config.indexingTimeout);
-      });
-    });
-  });
+  it('should be able to index to alternative index', function (done) {
+    Tweet.findOne({
+      message: 'I know kung-fu!'
+    }, function (err, doc) {
+      doc.message = 'I know taebo!'
+      doc.index({
+        index: 'public_tweets'
+      }, function () {
+        setTimeout(function () {
+          Tweet.search({
+            query_string: {
+              query: 'know'
+            }
+          }, {
+            index: 'public_tweets'
+          }, function (err1, res) {
+            res.hits.hits[0]._source.message.should.eql('I know taebo!')
+            done()
+          })
+        }, config.INDEXING_TIMEOUT)
+      })
+    })
+  })
 
-  it('should be able to index to alternative index and type', function(done) {
-    Tweet.findOne({message: 'I know kung-fu!'}, function(err, doc) {
-      doc.message = 'I know taebo!';
-      doc.index({index: 'public_tweets', type: 'utterings'}, function() {
-        setTimeout(function() {
-          Tweet.search({query_string: {query: 'know'}}, {
+  // This does not work in elastic > 6.x
+  // Indices created in 6.x only allow a single-type per index
+  /* it('should be able to index to alternative index and type', function (done) {
+    Tweet.findOne({
+      message: 'I know kung-fu!'
+    }, function (err, doc) {
+      doc.message = 'I know taebo!'
+      doc.index({
+        index: 'public_tweets',
+        type: 'utterings'
+      }, function () {
+        setTimeout(function () {
+          Tweet.search({
+            query_string: {
+              query: 'know'
+            }
+          }, {
             index: 'public_tweets',
             type: 'utterings'
-          }, function(err, res) {
-            res.hits.hits[0]._source.message.should.eql('I know taebo!');
-            done();
-          });
-        }, config.indexingTimeout);
-      });
-    });
-  });
-
-});
+          }, function (err1, res) {
+            res.hits.hits[0]._source.message.should.eql('I know taebo!')
+            done()
+          })
+        }, config.INDEXING_TIMEOUT)
+      })
+    })
+  }) */
+})
